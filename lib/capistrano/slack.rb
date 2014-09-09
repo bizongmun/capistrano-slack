@@ -6,9 +6,9 @@ require 'active_support/all'
 # TODO need to handle loading a bit beter. these would load into the instance if it's defined
 module Capistrano
   module Slack
-    def payload(announcement)
+    def payload(room, announcement)
       {
-        'channel' => fetch(:slack_room),
+        'channel' => room,
         'username' => fetch(:slack_username),
         'text' => announcement,
         'icon_emoji' => fetch(:slack_emoji)
@@ -17,12 +17,15 @@ module Capistrano
 
     def slack_connect(message)
       uri = URI.parse("https://#{fetch(:slack_subdomain)}.slack.com/services/hooks/incoming-webhook?token=#{fetch(:slack_token)}")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request.set_form_data(:payload => payload(message))
-      http.request(request)
+      rooms = [fetch(:slack_default_room, nil), fetch(:slack_room, nil)].flatten.compact
+      rooms.each do |room|
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        request = Net::HTTP::Post.new(uri.request_uri)
+        request.set_form_data(:payload => payload(room, message))
+        http.request(request)
+      end
     end
 
     def slack_defaults
