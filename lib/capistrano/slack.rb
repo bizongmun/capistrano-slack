@@ -41,14 +41,12 @@ module Capistrano
     def self.extended(configuration)
       configuration.load do
         slack_defaults
-        set :deployer do
-          ENV['GIT_AUTHOR_NAME'] || `git config user.name`.chomp
-        end
 
         namespace :slack do
           task :starting do
             if slack_token
-              announced_deployer = ActiveSupport::Multibyte::Chars.new(fetch(:deployer)).mb_chars.normalize(:kd).gsub(/[^\x00-\x7F]/,'').to_s
+              announced_deployer = ActiveSupport::Multibyte::Chars.new(fetch(:deployer, ENV['GIT_AUTHOR_NAME'] || `git config user.name`.chomp)).
+                mb_chars.normalize(:kd).gsub(/[^\x00-\x7F]/,'').to_s
               msg = if fetch(:branch, nil)
                       "#{announced_deployer} is deploying #{slack_application}'s #{branch} to #{fetch(:stage, 'production')}"
                     else
@@ -62,7 +60,7 @@ module Capistrano
           task :finished do
             begin
               return if slack_token.nil?
-              announced_deployer = fetch(:deployer)
+              announced_deployer = fetch(:deployer, ENV['GIT_AUTHOR_NAME'] || `git config user.name`.chomp)
               start_time = fetch(:start_time)
               elapsed = Time.now.to_i - start_time.to_i
               msg = "#{announced_deployer} deployed #{slack_application} successfully in #{elapsed} seconds."
